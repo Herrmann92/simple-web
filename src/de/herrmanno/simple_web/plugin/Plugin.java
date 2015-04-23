@@ -6,7 +6,4 @@ public interface Plugin {
 
 	public void register(Config config);
 	
-	default public String[] dependencies() {
-		return new String[]{};
-	};
 }

@@ -27,23 +27,26 @@ public class DefaultTypeConfig implements TypeConfig {
 
 	@Override
 	public void register(TypeHandler<?> typeHandler) {
-		Class<?> clazz = getHandleType(typeHandler.getClass());
+		Class<?> clazz = getHandleType(typeHandler);
 		handlers.put(clazz, typeHandler);
 	}
 	
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private Class<?> getHandleType(Class<? extends TypeHandler> class1) {
-		for(Method m : class1.getDeclaredMethods()) {
-			if(m.getName().equals("handle")) {
-				return m.getParameterTypes()[0];
-			}
-		}
+	@SuppressWarnings({"rawtypes" })
+	private Class<?> getHandleType(TypeHandler typeHandler) {
+		Class<?> clazz;
+		if((clazz = typeHandler.getHandledType()) != null)
+			return clazz;
 		
-		if((class1 = (Class<? extends TypeHandler<?>>) class1.getSuperclass()) != null) {
-			return getHandleType(class1);
-		} else {
-			return null;
-		}
+		clazz = typeHandler.getClass();
+		do {
+			for(Method m : clazz.getDeclaredMethods()) {
+				if(m.getName().equals("handle")) {
+					return m.getParameterTypes()[0];
+				}
+			}
+		} while((clazz = clazz.getSuperclass()) != null);
+		
+		return null;
 	}
 
 	

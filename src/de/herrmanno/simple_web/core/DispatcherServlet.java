@@ -1,6 +1,7 @@
 package de.herrmanno.simple_web.core;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.util.LinkedList;
 
 import javax.servlet.ServletException;
@@ -9,6 +10,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import de.herrmanno.simple_web.config.Config;
+import de.herrmanno.simple_web.core.filter.AnnotationFilter;
+import de.herrmanno.simple_web.core.route.Route;
 import de.herrmanno.simple_web.util.Request;
 import de.herrmanno.simple_web.util.Response;
 
@@ -43,7 +46,9 @@ public abstract class DispatcherServlet extends HttpServlet {
 			
 			for(Route route : routes) {
 				if(route.routeRegex.equals(req.path)) {
-					out = route.function.apply(req, resp);
+					out = filter(req, resp, route);
+					if(out == null) 
+						out = route.function.apply(req, resp);
 					bytes = getConfig().getTypeConfig().handle(out.getClass(), out);
 					break;
 				}
@@ -56,6 +61,23 @@ public abstract class DispatcherServlet extends HttpServlet {
 			resp.send(500, e.getMessage().getBytes());
 		}
 		
+	}
+
+	private Object filter(Request req, Response resp, Route route) {
+		Object ret = null;
+		for(AnnotationFilter f : getConfig().getFilterConfig().getAnnotationFilter()) {
+			for(Annotation a : route.filterAnnotations) {
+				if(a.annotationType() == f.annotation) {
+					req.filterAnnotations.put(a.annotationType(), a);
+					if((ret = f.function.filter(req, resp)) != null) {
+						return ret;
+					}
+					
+				}
+			}
+		}
+		
+		return ret;
 	}
 	
 }

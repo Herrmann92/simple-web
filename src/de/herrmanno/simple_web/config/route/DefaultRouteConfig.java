@@ -2,7 +2,7 @@ package de.herrmanno.simple_web.config.route;
 
 import java.util.LinkedList;
 
-import de.herrmanno.simple_web.core.Route;
+import de.herrmanno.simple_web.core.route.Route;
 
 public class DefaultRouteConfig implements RouteConfig {
 

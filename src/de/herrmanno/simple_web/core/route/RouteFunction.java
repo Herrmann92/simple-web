@@ -1,4 +1,4 @@
-package de.herrmanno.simple_web.core;
+package de.herrmanno.simple_web.core.route;
 
 import java.util.function.BiFunction;
 import de.herrmanno.simple_web.util.Request;
