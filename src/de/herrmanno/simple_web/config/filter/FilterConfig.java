@@ -14,4 +14,9 @@ public interface FilterConfig {
 	
 	
 	public void register(Filter filter);
+	
+	default public void register(Filter... filter) {
+		for(Filter f : filter)
+			register(f);
+	}
 }

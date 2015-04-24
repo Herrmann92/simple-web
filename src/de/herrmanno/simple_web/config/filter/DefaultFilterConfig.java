@@ -4,15 +4,21 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import de.herrmanno.simple_web.config.Config;
 import de.herrmanno.simple_web.core.filter.AnnotationFilter;
 import de.herrmanno.simple_web.core.filter.Filter;
 import de.herrmanno.simple_web.core.filter.RouteFilter;
 
 public class DefaultFilterConfig implements FilterConfig {
 
-	Set<AnnotationFilter> aFilter = new HashSet<AnnotationFilter>();
-	Set<RouteFilter> rFilter = new HashSet<RouteFilter>();
+	protected Set<AnnotationFilter> aFilter = new HashSet<AnnotationFilter>();
+	protected Set<RouteFilter> rFilter = new HashSet<RouteFilter>();
+	protected Config config;
 
+
+	public DefaultFilterConfig(Config config) {
+		this.config = config;
+	}
 
 	@Override
 	public void register(Filter filter) {

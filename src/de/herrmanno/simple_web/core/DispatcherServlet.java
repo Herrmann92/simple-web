@@ -3,6 +3,8 @@ package de.herrmanno.simple_web.core;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.LinkedList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -10,6 +12,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import de.herrmanno.simple_web.config.Config;
+import de.herrmanno.simple_web.constants.MODE;
 import de.herrmanno.simple_web.core.filter.AnnotationFilter;
 import de.herrmanno.simple_web.core.route.Route;
 import de.herrmanno.simple_web.util.Request;
@@ -21,17 +24,24 @@ public abstract class DispatcherServlet extends HttpServlet {
 	 * 
 	 */
 	private static final long serialVersionUID = -164636491368179633L;
+	
+	public static Config config;
 	private LinkedList<Route> routes;
 
 	
-	abstract protected Config getConfig();
-	
 	@Override
 	public void init() throws ServletException {
+		try {
+			DispatcherServlet.config = getConfig().newInstance();
+		} catch (InstantiationException | IllegalAccessException e) {
+			e.printStackTrace();
+			throw new ServletException("Your Config is bad!");
+		}
 		super.init();
-		routes = getConfig().getRouteConfig().getRoutes();
+		routes = config.getRouteConfig().getRoutes();
 	}
-	
+
+	abstract protected Class<? extends Config> getConfig();
 	
 	@Override
 	protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -44,16 +54,23 @@ public abstract class DispatcherServlet extends HttpServlet {
 			Object out = "";
 			byte[] bytes = null;
 			
+			Matcher matcher;
+			boolean found = false;
 			for(Route route : routes) {
-				if(route.routeRegex.equals(req.path)) {
+				matcher = Pattern.compile(route.getFullRoute()).matcher(req.path);
+				if(matcher.matches()) {
 					out = filter(req, resp, route);
 					if(out == null) 
-						out = route.function.apply(req, resp);
-					bytes = getConfig().getTypeConfig().handle(out.getClass(), out);
+						//out = route.function.apply(req, resp);
+						//out = route.method.invoke(route.controller, createArgs(req, resp, route, matcher));
+						out = route.method.invoke(route.controller, req, resp, matcher);
+					bytes = config.getTypeConfig().handle(req, resp, out.getClass(), out);
+					found = true;
 					break;
 				}
 			}
-			
+			if(!found)
+				throw new Exception("No matching route found");
 			resp.send(bytes);
 			
 		} catch (Exception e) {
@@ -65,7 +82,7 @@ public abstract class DispatcherServlet extends HttpServlet {
 
 	private Object filter(Request req, Response resp, Route route) {
 		Object ret = null;
-		for(AnnotationFilter f : getConfig().getFilterConfig().getAnnotationFilter()) {
+		for(AnnotationFilter f : config.getFilterConfig().getAnnotationFilter()) {
 			for(Annotation a : route.filterAnnotations) {
 				if(a.annotationType() == f.annotation) {
 					req.filterAnnotations.put(a.annotationType(), a);
@@ -79,5 +96,19 @@ public abstract class DispatcherServlet extends HttpServlet {
 		
 		return ret;
 	}
+
+	/*
+	private Object[] createArgs(Request req, Response resp, Route route, Matcher matcher) throws Exception {
+		List<Object> args = new LinkedList<Object>();
+		args.add(req);
+		args.add(resp);
+		
+		for(Parameter p : route.routeParams) {
+			args.add(ParameterHelper.getValue(p.getType(), matcher.group(p.getName())));
+		}
+		
+		return args.toArray();
+	}
+	*/
 	
 }

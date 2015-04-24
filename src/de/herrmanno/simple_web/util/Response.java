@@ -7,9 +7,8 @@ import javax.servlet.http.HttpServletResponse;
 public class Response {
 
 	private HttpServletResponse resp;
-	private int status;
-	private boolean statusSet = false;
-
+	private int status = -1;
+	private String responseType = null;
 	
 	public Response(HttpServletResponse resp) {
 		this.resp = resp;
@@ -20,8 +19,13 @@ public class Response {
 	}
 	
 	public void setStatus(int code) {
-		this.statusSet  = true;
-		this.status = code;
+		if(status == -1 && code > 0 && code < 600)
+			this.status = code;
+	}
+	
+	public void setResponseType(String type) {
+		if(responseType == null)
+			responseType = type;
 	}
 	
 	public void send(String str) throws IOException {
