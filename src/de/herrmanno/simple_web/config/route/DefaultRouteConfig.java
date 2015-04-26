@@ -2,7 +2,6 @@ package de.herrmanno.simple_web.config.route;
 
 import java.util.LinkedList;
 
-import de.herrmanno.simple_web.config.Config;
 import de.herrmanno.simple_web.core.controller.Controller;
 import de.herrmanno.simple_web.core.route.Nested;
 import de.herrmanno.simple_web.core.route.Routable;
@@ -11,16 +10,9 @@ import de.herrmanno.simple_web.core.route.Route;
 public class DefaultRouteConfig implements RouteConfig {
 
 	protected LinkedList<Route> list = new LinkedList<Route>();
-	protected Config config;
 
 	
-	public DefaultRouteConfig(Config config) {
-		this.config = config;
-	}
-
-	@Override
-	public Config getConfig() {
-		return this.config;
+	public DefaultRouteConfig() {
 	}
 
 	public LinkedList<Route> getRoutes() {
@@ -47,7 +39,7 @@ public class DefaultRouteConfig implements RouteConfig {
 				((Route) r).addPrefix(nested.getPrefix());
 			}
 			else if(r instanceof Controller) {
-				for(Route route : ((Controller) r).getRoutes(config.getParameterConfig()))
+				for(Route route : ((Controller) r).getRoutes())
 					route.addPrefix(nested.getPrefix());
 			}
 			else if(r instanceof Nested) {

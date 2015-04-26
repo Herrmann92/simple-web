@@ -2,13 +2,13 @@ package de.herrmanno.simple_web.core.controller;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
 
-import de.herrmanno.simple_web.config.parameter.ParameterConfig;
 import de.herrmanno.simple_web.core.RouteMethod;
 import de.herrmanno.simple_web.core.route.Route;
 
@@ -18,10 +18,10 @@ public class BaseController implements Controller {
 	protected final LinkedList<Route> routes;
 	protected final Collection<? extends Annotation> annotations;
 	
-	public BaseController(ParameterConfig pconfig) {
-		context = createContext();
-		routes = createRoutes(pconfig);
+	public BaseController() {
 		annotations = createAnnotations();
+		context = createContext();
+		routes = createRoutes();
 	}
 	
 	protected String createContext() {
@@ -31,7 +31,11 @@ public class BaseController implements Controller {
 		
 		String n = this.getClass().getSimpleName();
 		
-		if(n.toLowerCase().endsWith("controller")) n = n.substring(0, n.length()-"controller".length());
+		if(n.toLowerCase().endsWith("controller"))
+			n = n.substring(0, n.length()-"controller".length());
+		
+		if(n.toLowerCase().equals("index"))
+			n = "";
 		
 		return n.toLowerCase();
 		
@@ -47,7 +51,7 @@ public class BaseController implements Controller {
 		*/
 	}
 	
-	protected LinkedList<Route> createRoutes(ParameterConfig pconfig) {
+	protected LinkedList<Route> createRoutes() {
 		Class<?> clazz = this.getClass();
 		Set<Method> methods = new HashSet<Method>();
 		do {
@@ -62,7 +66,7 @@ public class BaseController implements Controller {
 		LinkedList<Route> routes = new LinkedList<Route>();
 		for(Method m : methods) {
 			try {
-				routes.add(new Route(this, new RouteMethod(m, pconfig)));
+				routes.add(new Route(this, new RouteMethod(m)));
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -73,7 +77,8 @@ public class BaseController implements Controller {
 	
 
 	protected Collection<? extends Annotation> createAnnotations() {
-		return Arrays.asList(getClass().getAnnotations());
+		Annotation[] a = getClass().getAnnotations();
+		return a.length > 0  ? Arrays.asList(a) : new ArrayList<Annotation>();
 	}
 
 	@Override
@@ -82,7 +87,7 @@ public class BaseController implements Controller {
 	}
 
 	@Override
-	public Route[] getRoutes(ParameterConfig pconfig) {
+	public Route[] getRoutes() {
 		return routes.toArray(new Route[]{});
 	}
 

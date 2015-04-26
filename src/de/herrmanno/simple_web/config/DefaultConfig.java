@@ -9,6 +9,7 @@ import de.herrmanno.simple_web.config.route.RouteConfig;
 import de.herrmanno.simple_web.config.type.DefaultTypeConfig;
 import de.herrmanno.simple_web.config.type.TypeConfig;
 import de.herrmanno.simple_web.constants.MODE;
+import de.herrmanno.simple_web.core.controller.Controller;
 import de.herrmanno.simple_web.plugin.BasePlugin;
 import de.herrmanno.simple_web.plugin.Plugin;
 
@@ -20,15 +21,20 @@ public class DefaultConfig implements Config {
 	protected ParameterConfig parameterConfig;
 	
 	protected Plugin[] plugins = {new BasePlugin()};
+	protected Controller[] controllers = {};
 	
 	public DefaultConfig() {
-		routeConfig = new DefaultRouteConfig(this);
-		filterConfig = new DefaultFilterConfig(this);
-		typeConfig = new DefaultTypeConfig(this);
-		parameterConfig = new DefaultParameterConfig(this);
+		routeConfig = new DefaultRouteConfig();
+		filterConfig = new DefaultFilterConfig();
+		typeConfig = new DefaultTypeConfig();
+		parameterConfig = new DefaultParameterConfig();
 		
-		
+		init();
+	}
+
+	protected void init() {
 		register(plugins);
+		routeConfig.register(controllers);
 	}
 	
 	@Override

@@ -3,18 +3,12 @@ package de.herrmanno.simple_web.config.parameter;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 
-import de.herrmanno.simple_web.config.Config;
 import de.herrmanno.simple_web.parameterhandler.ParameterHandler;
 
 public class DefaultParameterConfig implements ParameterConfig {
 
 	HashMap<Class<?>, ParameterHandler<?>> handlers = new HashMap<Class<?>, ParameterHandler<?>>();
-	protected Config config;
 
-
-	public DefaultParameterConfig(Config config) {
-		this.config = config;
-	}
 
 	@Override
 	public void register(ParameterHandler<?> parameterHandler) {

@@ -22,22 +22,23 @@ public class RouteMethod {
 
 	protected final Method method;
 	protected final Parameter[] routeParameters;
-	protected final String route;
+	//protected final String route;
 	protected final HTTP_METHOD[] methods;
 	protected final Route annotation;
 	protected final Collection<? extends Annotation> annotations;
-	private ParameterConfig pconfig;
+	//private ParameterConfig pconfig;
 	
-	public RouteMethod(Method m, ParameterConfig pconfig) throws Exception {
-		this.pconfig = pconfig;
+	public RouteMethod(Method m) throws Exception {
+		//this.pconfig = pconfig;
 		this.method = m;
 		this.routeParameters = createRouteParams();
-		this.route = createRouteRegex();
+		//this.route = createRouteRegex();
 		this.methods = createMethods();
 		this.annotation = method.getAnnotation(Route.class);
 		this.annotations = createAnnotations();
 	}
-		
+	
+	/*
 	protected String createRouteRegex() throws Exception {
 		String r = "";
 		if(annotation != null && !annotation.regex().isEmpty()) {
@@ -55,6 +56,7 @@ public class RouteMethod {
 		
 		return r;
 	}
+	*/
 
 	protected Parameter[] createRouteParams() throws Exception {
 		if(!isRouteMethod(method))
@@ -84,8 +86,23 @@ public class RouteMethod {
 		return method;
 	}
 	
-	public String getRoute() {
-		return route;
+	public String getRoute(ParameterConfig pconfig) {
+		String r = "";
+		if(annotation != null && !annotation.regex().isEmpty()) {
+			r += annotation.regex();
+		}
+		else if(!method.getName().toLowerCase().equals("index"))
+			r += method.getName().toLowerCase();
+		
+		for(Parameter p : routeParameters) {
+			r += "/";
+			r += "(?<" + p.getName() + ">";
+			r += pconfig.getParameterHandler(p.getType()).regex();
+			r += ")";
+		}
+		
+		return r;
+		//return route;
 	}
 
 	public Parameter[] getRouteParams() {
@@ -101,7 +118,7 @@ public class RouteMethod {
 		return annotations;
 	}
 
-	public Object invoke(Controller controller, Request req, Response resp, Matcher matcher) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+	public Object invoke(Controller controller, Request req, Response resp, Matcher matcher, ParameterConfig pconfig) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		List<Object> args = new LinkedList<Object>();
 		args.add(req);
 		args.add(resp);

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.LinkedList;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -12,11 +11,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import de.herrmanno.simple_web.config.Config;
-import de.herrmanno.simple_web.constants.MODE;
 import de.herrmanno.simple_web.core.filter.AnnotationFilter;
 import de.herrmanno.simple_web.core.route.Route;
 import de.herrmanno.simple_web.util.Request;
 import de.herrmanno.simple_web.util.Response;
+import de.herrmanno.simple_web.util.RouteAndRegex;
 
 public abstract class DispatcherServlet extends HttpServlet {
 
@@ -26,7 +25,8 @@ public abstract class DispatcherServlet extends HttpServlet {
 	private static final long serialVersionUID = -164636491368179633L;
 	
 	public static Config config;
-	private LinkedList<Route> routes;
+	//private LinkedList<Route> routes;
+	private LinkedList<RouteAndRegex> routes = new LinkedList<RouteAndRegex>();
 
 	
 	@Override
@@ -38,7 +38,39 @@ public abstract class DispatcherServlet extends HttpServlet {
 			throw new ServletException("Your Config is bad!");
 		}
 		super.init();
-		routes = config.getRouteConfig().getRoutes();
+		//routes = config.getRouteConfig().getRoutes();
+		createRoutes();
+	}
+
+	protected void createRoutes() {
+		for(Route r : config.getRouteConfig().getRoutes()) {
+			RouteAndRegex rr = new RouteAndRegex(r, r.getFullRoute(config.getParameterConfig()));
+			for(RouteAndRegex rr2 : routes) {
+				if(rr.regex.pattern().equals(rr2.regex.pattern())) {
+					String msg = "Unambigious Routes: " 
+							+ rr.route.controller.getClass().getSimpleName() 
+							+ "#"
+							+ rr.route.method.method.getName()
+							+ " And "
+							+ rr2.route.controller.getClass().getSimpleName() 
+							+ "#"
+							+ rr2.route.method.method.getName();
+					System.err.println(msg);
+				}
+			}
+			
+			routes.add(rr);
+		}
+		
+		System.out.println("Routes:");
+		for(RouteAndRegex rr : routes) {
+			System.out.println(
+				rr.regex + " -> " 
+				+ rr.route.controller.getClass().getSimpleName() 
+				+ "#"
+				+ rr.route.method.method.getName()
+			);
+		}
 	}
 
 	abstract protected Class<? extends Config> getConfig();
@@ -56,14 +88,14 @@ public abstract class DispatcherServlet extends HttpServlet {
 			
 			Matcher matcher;
 			boolean found = false;
-			for(Route route : routes) {
-				matcher = Pattern.compile(route.getFullRoute()).matcher(req.path);
+			for(RouteAndRegex rr : routes) {
+				matcher = rr.regex.matcher(req.path); //Pattern.compile(route.getFullRoute()).matcher(req.path);
 				if(matcher.matches()) {
-					out = filter(req, resp, route);
+					out = filter(req, resp, rr.route);
 					if(out == null) 
 						//out = route.function.apply(req, resp);
 						//out = route.method.invoke(route.controller, createArgs(req, resp, route, matcher));
-						out = route.method.invoke(route.controller, req, resp, matcher);
+						out = rr.route.method.invoke(rr.route.controller, req, resp, matcher, config.getParameterConfig());
 					bytes = config.getTypeConfig().handle(req, resp, out.getClass(), out);
 					found = true;
 					break;

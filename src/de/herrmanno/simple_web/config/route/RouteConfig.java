@@ -2,15 +2,12 @@ package de.herrmanno.simple_web.config.route;
 
 import java.util.LinkedList;
 
-import de.herrmanno.simple_web.config.Config;
 import de.herrmanno.simple_web.core.controller.Controller;
 import de.herrmanno.simple_web.core.route.Routable;
 import de.herrmanno.simple_web.core.route.Route;
 
 public interface RouteConfig {
 
-	public Config getConfig();
-	
 	public LinkedList<Route> getRoutes();
 	
 	public void register(Routable route);
@@ -22,7 +19,7 @@ public interface RouteConfig {
 	};
 	
 	default public void register(Controller controller) {
-		register(controller.getRoutes(getConfig().getParameterConfig()));
+		register(controller.getRoutes());
 	}
 	
 }

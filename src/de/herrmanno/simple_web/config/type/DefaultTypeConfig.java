@@ -3,18 +3,11 @@ package de.herrmanno.simple_web.config.type;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 
-import de.herrmanno.simple_web.config.Config;
 import de.herrmanno.simple_web.typehandler.TypeHandler;
 
 public class DefaultTypeConfig implements TypeConfig {
 
 	HashMap<Class<?>, TypeHandler<?>> handlers = new HashMap<Class<?>, TypeHandler<?>>();
-	protected Config config;
-
-
-	public DefaultTypeConfig(Config config) {
-		this.config = config;
-	}
 
 	@SuppressWarnings("unchecked")
 	@Override
