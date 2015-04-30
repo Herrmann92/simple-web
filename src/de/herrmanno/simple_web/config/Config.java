@@ -1,7 +1,6 @@
 package de.herrmanno.simple_web.config;
 
 import de.herrmanno.simple_web.config.filter.FilterConfig;
-import de.herrmanno.simple_web.config.parameter.ParameterConfig;
 import de.herrmanno.simple_web.config.route.RouteConfig;
 import de.herrmanno.simple_web.config.type.TypeConfig;
 import de.herrmanno.simple_web.constants.MODE;
@@ -17,10 +16,11 @@ public interface Config {
 
 	public TypeConfig getTypeConfig();
 	
-	public ParameterConfig getParameterConfig();
+	//public ParameterConfig getParameterConfig();
 	
 	
 	default public void register(Plugin plugin) {
+		plugin.startUp();
 		plugin.register(this);
 	};
 	

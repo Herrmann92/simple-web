@@ -1,8 +1,5 @@
 package de.herrmanno.simple_web.util;
 
-import java.lang.reflect.Parameter;
-
-import de.herrmanno.simple_web.core.DispatcherServlet;
 
 
 public class ParameterHelper {

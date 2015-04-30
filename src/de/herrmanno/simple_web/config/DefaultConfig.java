@@ -52,10 +52,12 @@ public class DefaultConfig implements Config {
 		return typeConfig;
 	}
 
+	/*
 	@Override
 	public ParameterConfig getParameterConfig() {
 		return parameterConfig;
 	}
+	*/
 
 	@Override
 	public MODE getMote() {

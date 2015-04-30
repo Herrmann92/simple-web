@@ -26,7 +26,7 @@ public class BasePlugin implements Plugin {
 		
 		config.getTypeConfig().register(tHandlers);
 		
-		config.getParameterConfig().register(pHandlers);
+		//config.getParameterConfig().register(pHandlers);
 
 	}
 

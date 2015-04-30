@@ -17,8 +17,8 @@ public interface TypeConfig {
 	
 	
 	@SuppressWarnings("unchecked")
-	default <T> byte[] handle(Request req, Response resp, Class<T> c, Object obj) throws Exception {
-		TypeHandler<T> handler = getTypeHandler(c);
+	default <T> byte[] handle(Request req, Response resp, T obj) throws Exception {
+		TypeHandler<T> handler = (TypeHandler<T>) getTypeHandler(obj.getClass());
 		if(handler == null)
 			throw new Exception("No Typehandler found!");
 		return handler.handle((T) obj, req, resp);
