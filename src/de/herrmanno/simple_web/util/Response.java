@@ -4,11 +4,12 @@ import java.io.IOException;
 
 import javax.servlet.http.HttpServletResponse;
 
+import de.herrmanno.simple_web.constants.ContentType;
+
 public class Response {
 
 	private HttpServletResponse resp;
 	private int status = -1;
-	private String responseType = null;
 	
 	public Response(HttpServletResponse resp) {
 		this.resp = resp;
@@ -23,9 +24,12 @@ public class Response {
 			this.status = code;
 	}
 	
-	public void setResponseType(String type) {
-		if(responseType == null)
-			responseType = type;
+	public void setContentType(ContentType type) {
+		this.resp.setContentType(type.mime);
+	}
+	
+	public void setContentType(String type) {
+		this.resp.setContentType(type);
 	}
 	
 	public void send(String str) throws IOException {

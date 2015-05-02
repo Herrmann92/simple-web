@@ -2,17 +2,30 @@ package de.herrmanno.simple_web.core;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import de.herrmanno.simple_web.config.Config;
 import de.herrmanno.simple_web.constants.HTTP_METHOD;
+import de.herrmanno.simple_web.constants.MODE;
+import de.herrmanno.simple_web.core.controller.Controller;
 import de.herrmanno.simple_web.core.filter.AnnotationFilter;
+import de.herrmanno.simple_web.core.filter.RouteFilter;
 import de.herrmanno.simple_web.core.route.Route;
+import de.herrmanno.simple_web.exceptions.NoRouteFoundException;
+import de.herrmanno.simple_web.exceptions.NoTypeHandlerFoundException;
+import de.herrmanno.simple_web.exceptions.SimpleWebException;
+import de.herrmanno.simple_web.exceptions.UaAmbigiousRouteException;
+import de.herrmanno.simple_web.plugin.BasePlugin;
+import de.herrmanno.simple_web.plugin.Plugin;
+import de.herrmanno.simple_web.typehandler.TypeHandler;
 import de.herrmanno.simple_web.util.Request;
 import de.herrmanno.simple_web.util.Response;
 
@@ -23,120 +36,148 @@ public abstract class DispatcherServlet extends HttpServlet {
 	 */
 	private static final long serialVersionUID = -164636491368179633L;
 	
-	public static Config config;
-	private LinkedList<Route> routes;
-	//private LinkedList<RouteAndRegex> routes = new LinkedList<RouteAndRegex>();
+	protected final LinkedList<Route> routes = new LinkedList<Route>();
+	protected final Set<AnnotationFilter> aFilter = new HashSet<AnnotationFilter>();
+	protected final Set<RouteFilter> rFilter = new HashSet<RouteFilter>();
+	protected final HashMap<Class<?>, TypeHandler<?>> handlers = new HashMap<Class<?>, TypeHandler<?>>();
 
+	public final boolean PROD, TEST, DEV;
+	
+	public DispatcherServlet() {
+		this(MODE.DEV);
+	}
+	
+	public DispatcherServlet(MODE m) {
+		switch (m) {
+		case PROD:
+			this.PROD = true;
+			this.TEST = this.DEV = false;
+			break;
+		case TEST:
+			this.TEST = true;
+			this.PROD = this.DEV = false;
+			break;
+		case DEV:
+			this.DEV = true;
+			this.TEST = this.PROD = false;
+			break;
+		default:
+			this.DEV = true;
+			this.TEST = this.PROD = false;
+			break;
+		}
+	}
 	
 	@Override
 	public void init() throws ServletException {
-		createConfig();
 		super.init();
-		//routes = config.getRouteConfig().getRoutes();
-		createRoutes();
+		register(new BasePlugin());
+	}
+	
+	public void register(Plugin... plugins) {
+		for(Plugin plugin : plugins)
+			plugin.register(this);
 	}
 
-	protected void createConfig() throws ServletException {
-		try {
-			DispatcherServlet.config = getConfig().newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
-			e.printStackTrace();
-			throw new ServletException("Your Config is bad!");
+	public void register(RouteFilter... filters) {
+		for(RouteFilter filter : filters)
+			rFilter.add(filter);
+	}
+
+	public void register(AnnotationFilter... filters) {
+		for(AnnotationFilter filter : filters)
+			aFilter.add(filter);
+	}
+	
+	public void register(Controller... controllers) {
+		for(Controller controller : controllers)
+			for(Route r : controller.getRoutes()) {
+				routes.add(r);
+			}
+	}
+
+	
+	public void register(TypeHandler<?>... typeHandlers) {
+		for(TypeHandler<?> typeHandler : typeHandlers) {
+			Class<?> clazz = getHandleType(typeHandler);
+			handlers.put(clazz, typeHandler);
 		}
 	}
 
-	protected void createRoutes() {
-		routes = config.getRouteConfig().getRoutes();
-		routes.forEach(System.out::println);
-	}
-	
-	/*
-	protected void createRoutes() {
-		for(Route r : config.getRouteConfig().getRoutes()) {
-			RouteAndRegex rr = new RouteAndRegex(r, r.getFullRoute(config.getParameterConfig()));
-			for(RouteAndRegex rr2 : routes) {
-				if(rr.regex.pattern().equals(rr2.regex.pattern())) {
-					String msg = "Unambigious Routes: " 
-							+ rr.route.controller.getClass().getSimpleName() 
-							+ "#"
-							+ rr.route.method.method.getName()
-							+ " And "
-							+ rr2.route.controller.getClass().getSimpleName() 
-							+ "#"
-							+ rr2.route.method.method.getName();
-					System.err.println(msg);
-				}
+	@SuppressWarnings("unchecked")
+	protected <T> TypeHandler<T> getTypeHandler(Class<T> clazz) {
+		TypeHandler<T> handler = (TypeHandler<T>) handlers.get(clazz);
+		
+		if(handler == null) {
+			if((clazz = (Class<T>) clazz.getSuperclass()) != null) {
+				return getTypeHandler(clazz);
+			} else {
+				return null;
 			}
-			
-			routes.add(rr);
 		}
 		
-		System.out.println("Routes:");
-		for(RouteAndRegex rr : routes) {
-			System.out.println(
-				rr.regex + " -> " 
-				+ rr.route.controller.getClass().getSimpleName() 
-				+ "#"
-				+ rr.route.method.method.getName()
-			);
-		}
+		return handler;
 	}
-	*/
 
-	abstract protected Class<? extends Config> getConfig();
+	protected Class<?> getHandleType(TypeHandler<?> typeHandler) {
+		Class<?> clazz;
+		if((clazz = typeHandler.getHandledType()) != null)
+			return clazz;
+		
+		clazz = typeHandler.getClass();
+		do {
+			for(Method m : clazz.getDeclaredMethods()) {
+				if(m.getName().equals("handle")) {
+					return m.getParameterTypes()[0];
+				}
+			}
+		} while((clazz = clazz.getSuperclass()) != null);
+		
+		return null;
+	}
 	
+	@SuppressWarnings("unchecked")
+	protected <T> byte[] handle(Request req, Response resp, T obj) throws Exception {
+		TypeHandler<T> handler = (TypeHandler<T>) getTypeHandler(obj.getClass());
+		if(handler == null)
+			throw new NoTypeHandlerFoundException(obj.getClass().getSimpleName());
+		return handler.handle((T) obj, req, resp);
+	};
+
 	@Override
 	protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		doRequest(new Request(req), new Response(resp));
-	}
-	
-	protected void doRequest(Request req, Response resp) throws ServletException, IOException {
-		
 		try {
-
-			Object out = "";
-			byte[] bytes = null;
-			
-			/*
-			Matcher matcher;
-			boolean found = false;
-			for(RouteAndRegex rr : routes) {
-				matcher = rr.regex.matcher(req.path); //Pattern.compile(route.getFullRoute()).matcher(req.path);
-				if(matcher.matches()) {
-					out = filter(req, resp, rr.route);
-					if(out == null) 
-						//out = route.function.apply(req, resp);
-						//out = route.method.invoke(route.controller, createArgs(req, resp, route, matcher));
-						out = rr.route.method.invoke(rr.route.controller, req, resp, matcher, config.getParameterConfig());
-					bytes = config.getTypeConfig().handle(req, resp, out.getClass(), out);
-					found = true;
-					break;
-				}
-			}
-			if(!found)
-				throw new Exception("No matching route found");
-			resp.send(bytes);
-			*/
-			
-			Route route = findRoute(req);
-			
-			out = filter(req, resp, route);
-			if(out == null) {
-				//Matcher matcher = route.pattern.matcher(req.path);
-				//out = route.method.invoke(route.controller, req, resp);
-				out = route.invoke(req, resp);
-				bytes = config.getTypeConfig().handle(req, resp, out);
-			}
-			resp.send(bytes);
-			
+			doRequest(new Request(req), new Response(resp));
 		} catch (Exception e) {
 			e.printStackTrace();
-			resp.send(500, e.getMessage().getBytes());
+			resp.sendError(500);
 		}
+	}
+	
+	protected void doRequest(Request req, Response resp) throws Exception {
+		
+
+		Object out = "";
+		byte[] bytes = null;
+		
+		try {
+			Route route = findRoute(req);
+			out = filter(req, resp, route);
+			if(out == null) {
+				out = route.invoke(req, resp);
+				bytes = handle(req, resp, out);
+			}
+		} catch(SimpleWebException e) {
+			bytes = handle(req, resp, e);
+		}
+		
+		
+		resp.send(bytes);
+			
 		
 	}
 
-	protected Route findRoute(Request req) throws Exception {
+	protected Route findRoute(Request req) throws SimpleWebException {
 		Route route = null;
 		for(Route r : routes) {
 			if(r.pattern.matcher(req.path).matches() && (r.method.methods.contains(req.method) || r.method.methods.contains(HTTP_METHOD.ALL))) {
@@ -145,41 +186,22 @@ public abstract class DispatcherServlet extends HttpServlet {
 				else {
 					route = Route.getHigherByPrecedence(route, r);
 					if(route == null)
-						throw new Exception("Ambigious Routes");
+						throw new UaAmbigiousRouteException(req.path);
 				}
 			}
 		}
 		
 		if(route == null)
-			throw new Exception("No route found");
+			throw new NoRouteFoundException(req.path);
 		
 		return route;
 	}
 	
-	/*
-	protected RouteAndRegex findRoute(Request req) throws Exception {
-		Matcher matcher;
-		boolean found = false;
-		RouteAndRegex r = null;
-		for(RouteAndRegex rr : routes) {
-			matcher = rr.regex.matcher(req.path);
-			if(matcher.matches()) {
-				if(!found) {
-					r = rr;
-					found = true;
-				} else {
-					throw new Exception("Unambigious Route '" + req.path + "'");
-				}
-			}
-		}
-		
-		return r;
-	}
-	*/
+	
 
 	protected Object filter(Request req, Response resp, Route route) {
 		Object ret = null;
-		for(AnnotationFilter f : config.getFilterConfig().getAnnotationFilter()) {
+		for(AnnotationFilter f : aFilter) {
 			for(Annotation a : route.filterAnnotations) {
 				if(a.annotationType() == f.annotation) {
 					req.filterAnnotations.put(a.annotationType(), a);
@@ -194,18 +216,4 @@ public abstract class DispatcherServlet extends HttpServlet {
 		return ret;
 	}
 
-	/*
-	private Object[] createArgs(Request req, Response resp, Route route, Matcher matcher) throws Exception {
-		List<Object> args = new LinkedList<Object>();
-		args.add(req);
-		args.add(resp);
-		
-		for(Parameter p : route.routeParams) {
-			args.add(ParameterHelper.getValue(p.getType(), matcher.group(p.getName())));
-		}
-		
-		return args.toArray();
-	}
-	*/
-	
 }
